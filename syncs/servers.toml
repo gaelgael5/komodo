@@ -1,0 +1,30 @@
+# ---------------------------------------------------------------------------
+# Déclaration des serveurs (hôtes Docker) gérés par Komodo.
+#
+# Règles :
+#   - `name` DOIT correspondre au PERIPHERY_CONNECT_AS de l'hôte
+#     (et à KOMODO_FIRST_SERVER_NAME pour l'hôte du Core).
+#   - En v2, PAS de champ `address` : son absence indique que c'est le
+#     Periphery qui se connecte au Core (websocket sortante).
+#   - Schéma complet :
+#     https://docs.rs/komodo_client/latest/komodo_client/entities/server/struct.ServerConfig.html
+#
+# Décommenter et adapter les blocs ci-dessous avec les vrais hostnames.
+# ---------------------------------------------------------------------------
+
+## L'hôte du Core (Periphery local, créé automatiquement au premier démarrage
+## sous le nom KOMODO_FIRST_SERVER_NAME — le déclarer ici le met sous Git).
+# [[server]]
+# name = "core-host"
+# description = "VM Core Komodo (Periphery local)"
+# tags = ["homelab"]
+# [server.config]
+# enabled = true
+
+## Un hôte Docker supplémentaire, enrôlé via scripts/add-periphery.sh.
+# [[server]]
+# name = "docker-host-01"
+# description = "VM Docker applicative"
+# tags = ["homelab"]
+# [server.config]
+# enabled = true
