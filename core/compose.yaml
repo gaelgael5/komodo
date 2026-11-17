@@ -1,0 +1,84 @@
+################################
+# 🦎 KOMODO COMPOSE - MONGO 🦎 #
+################################
+#
+# Basé sur compose/mongo.compose.yaml officiel (github.com/moghtech/komodo, branche main).
+# Écarts volontaires par rapport au fichier officiel :
+#   - image MongoDB figée sur mongo:8 (pas de latest) ;
+#   - montage /etc/komodo/syncs:/syncs activé pour les Resource Syncs ;
+#   - ports Mongo jamais exposés.
+#
+# Déploie : 1. MongoDB   2. Komodo Core   3. Komodo Periphery (local)
+#
+# Lancement (voir scripts/bootstrap-core.sh) :
+#   docker compose -p komodo -f core/compose.yaml --env-file core/compose.env up -d
+#
+# Le fichier core/compose.env est généré par ./dev-deploy.sh core (jamais commité).
+
+services:
+  mongo:
+    # Version figée. MongoDB 5+ exige un CPU avec AVX :
+    # sur Proxmox, mettre le type de CPU de la VM à "host".
+    image: mongo:8
+    labels:
+      komodo.skip: # Empêche Komodo d'arrêter ce conteneur via StopAllContainers
+    command: --quiet --wiredTigerCacheSizeGB 0.25
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${KOMODO_DATABASE_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${KOMODO_DATABASE_PASSWORD}
+
+  core:
+    image: ghcr.io/moghtech/komodo-core:${COMPOSE_KOMODO_IMAGE_TAG:-2}
+    init: true
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      # Seul port exposé : UI + API + websocket entrant des Periphery distants.
+      - 9120:9120
+    env_file: ./compose.env
+    environment:
+      KOMODO_DATABASE_ADDRESS: mongo:27017
+    volumes:
+      ## Clés de communication Core / Periphery
+      - keys:/config/keys
+      ## Sauvegardes datées de la base - https://komo.do/docs/setup/backup
+      - ${COMPOSE_KOMODO_BACKUPS_PATH}:/backups
+      ## Resource Syncs ("Komodo as code") déposés sur l'hôte
+      - /etc/komodo/syncs:/syncs
+      ## Optionnel : core.config.toml personnalisé
+      # - /path/to/core.config.toml:/config/config.toml
+      ## Optionnel : certificat CA racine interne à faire confiance
+      # - /path/to/root_ca.crt:/usr/local/share/ca-certificates/root_ca.crt
+
+  ## Periphery local : pilote le Docker de l'hôte du Core lui-même.
+  ## Les autres hôtes utilisent periphery/compose.yaml.
+  periphery:
+    image: ghcr.io/moghtech/komodo-periphery:${COMPOSE_KOMODO_IMAGE_TAG:-2}
+    init: true
+    restart: unless-stopped
+    depends_on:
+      - core
+    env_file: ./compose.env
+    volumes:
+      ## Clés de communication Core / Periphery
+      - keys:/config/keys
+      ## Socket Docker de l'hôte
+      - /var/run/docker.sock:/var/run/docker.sock
+      ## Permet au Periphery de voir les processus hors conteneur
+      - /proc:/proc
+      ## Répertoire racine du Periphery : doit être IDENTIQUE dans le conteneur
+      ## et sur l'hôte, sinon Docker se perd dans les chemins.
+      ## Voir https://github.com/moghtech/komodo/discussions/180
+      - ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}:${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
+
+volumes:
+  # Mongo
+  mongo-data:
+  mongo-config:
+  # Core / Periphery
+  keys:
