@@ -1,0 +1,25 @@
+# ------------------------------------------------------------------
+# Garde-fou : aucun secret en clair ne doit entrer dans ce dépôt.
+# ------------------------------------------------------------------
+
+# Fichiers d'environnement générés par dev-deploy.sh (secrets en clair)
+*.env
+!*.env.example
+
+# Les fichiers chiffrés sops (*.env.sops) sont, eux, commités
+!secrets/*.env.sops
+
+# Clés privées (age, TLS, SSH…)
+*.key
+*.pem
+keys.txt
+age.key
+
+# Sauvegardes de la base (restent sur l'hôte, jamais dans Git)
+backups/
+
+# Divers
+*.bak
+*.tmp
+*.swp
+.DS_Store

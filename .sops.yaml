@@ -1,0 +1,10 @@
+# Configuration sops : chiffrement des fichiers d'environnement dans secrets/.
+#
+# Initialisation (génère la clé age et remplace le destinataire ci-dessous) :
+#   ./dev-deploy.sh init-sops
+#
+# La clé PRIVÉE age reste en dehors du dépôt
+# (par défaut : ~/.config/sops/age/keys.txt — à sauvegarder ailleurs !).
+creation_rules:
+  - path_regex: secrets/.*\.env(\.sops)?$
+    age: "CHANGE_ME_AGE_RECIPIENT"
