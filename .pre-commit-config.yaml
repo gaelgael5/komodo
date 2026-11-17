@@ -1,0 +1,23 @@
+# Garde-fous exécutés avant chaque commit.
+# Installation (une fois par clone) :
+#   pipx install pre-commit   # ou : pip install --user pre-commit
+#   pre-commit install
+#
+# gitleaks bloque le commit si un secret en clair est détecté.
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.3
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace

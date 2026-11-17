@@ -1,0 +1,41 @@
+####################################
+# 🦎 KOMODO COMPOSE - PERIPHERY 🦎 #
+####################################
+#
+# Basé sur compose/periphery.compose.yaml officiel (github.com/moghtech/komodo, branche main).
+# Agent Periphery SEUL, pour tous les hôtes Docker autres que celui du Core.
+#
+# En v2, c'est le Periphery qui se connecte au Core (websocket sortante) :
+# AUCUN port à ouvrir sur cet hôte.
+#
+# Lancement (voir scripts/add-periphery.sh) :
+#   docker compose -p komodo-periphery -f periphery/compose.yaml --env-file periphery/periphery.env up -d
+#
+# Le fichier periphery/periphery.env est généré par ./dev-deploy.sh periphery (jamais commité).
+
+services:
+  periphery:
+    image: ghcr.io/moghtech/komodo-periphery:${COMPOSE_KOMODO_IMAGE_TAG:-2}
+    init: true
+    restart: unless-stopped
+    ## Liste complète des variables + descriptions :
+    ## 🦎 https://github.com/moghtech/komodo/blob/main/config/periphery.config.toml 🦎
+    env_file: ./periphery.env
+    volumes:
+      ## Stockage de la paire de clés du Periphery + clé publique du Core (épinglée)
+      - keys:/config/keys
+      ## Socket Docker de l'hôte
+      - /var/run/docker.sock:/var/run/docker.sock
+      ## Permet au Periphery de voir les processus hors conteneur
+      - /proc:/proc
+      ## Répertoire racine du Periphery : doit être IDENTIQUE dans le conteneur
+      ## et sur l'hôte, sinon Docker se perd dans les chemins.
+      ## Voir https://github.com/moghtech/komodo/discussions/180
+      - ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}:${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
+      ## Optionnel : periphery.config.toml personnalisé
+      # - /path/to/periphery.config.toml:/config/config.toml
+      ## Optionnel : certificat CA racine interne à faire confiance
+      # - /path/to/root_ca.crt:/usr/local/share/ca-certificates/root_ca.crt
+
+volumes:
+  keys:
