@@ -151,6 +151,22 @@ script (elle est alors inscrite en dur dans `PERIPHERY_CORE_PUBLIC_KEYS`).
    (la clé ne sert qu'au premier contact) et relancer `scripts/add-periphery.sh` ;
 3. déclarer l'hôte dans [`syncs/servers.toml`](syncs/README.md) et commiter.
 
+### Checklist par hôte Docker (récapitulatif)
+
+| # | Où | Quoi |
+| - | --- | --- |
+| 1 | hôte | Docker + compose v2 installés, `git` présent |
+| 2 | UI Core | créer (ou réutiliser) une Onboarding Key `O-…` |
+| 3 | hôte | `git clone` du dépôt puis `scripts/add-periphery.sh` |
+| 4 | UI Core | le Server apparaît et passe « OK » |
+| 5 | hôte | vider `PERIPHERY_ONBOARDING_KEY`, relancer `scripts/add-periphery.sh` |
+| 6 | dépôt | déclarer l'hôte dans `syncs/servers.toml`, commiter |
+| 7 | UI Core | exécuter la sync → le Server est désormais géré par Git |
+
+Ensuite, les services de cet hôte se déclarent comme Stacks dans
+[`syncs/stacks.toml`](syncs/README.md) (champ `server` = nom de l'hôte) ;
+les mises à jour passent par `scripts/update.sh` sur l'hôte.
+
 ## 3. Komodo as code (Resource Syncs)
 
 Les ressources Komodo (serveurs, stacks…) sont déclarées en TOML dans
