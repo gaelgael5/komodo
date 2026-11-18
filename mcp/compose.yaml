@@ -1,0 +1,39 @@
+#######################################
+# 🦎 KOMODO MCP SERVER - COMPOSE 🦎 #
+#######################################
+#
+# Basé sur docker/compose.yaml officiel (github.com/MP-Tool/komodo-mcp-server).
+# Serveur MCP HTTP persistant : les agents IA s'y connectent et pilotent
+# Komodo via son API, chacun avec son propre compte Komodo (auth activée).
+#
+# Écarts volontaires par rapport au fichier officiel :
+#   - image épinglée sur le tag majeur "1" (pas de latest) ;
+#   - configuration par fichier d'env mcp.env généré par ../dev-deploy.sh mcp ;
+#   - surface d'outils réduite aux niveaux komodo:read + komodo:operate
+#     (exclusions dans mcp.env) ; confirmations destructives actives.
+#
+# Lancement (voir scripts/deploy-mcp.sh) :
+#   docker compose -p komodo-mcp -f mcp/compose.yaml --env-file mcp/mcp.env up -d
+
+services:
+  komodo-mcp-server:
+    image: ghcr.io/mp-tool/komodo-mcp-server:${KOMODO_MCP_IMAGE_TAG:-1}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      # Endpoint MCP : http://<cet-hote>:<port>/mcp
+      - ${KOMODO_MCP_PORT:-8000}:8000
+    env_file: ./mcp.env
+
+    ## Limites de ressources (serveur léger)
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+    ## Healthcheck intégré à l'image (/ready : 200 prêt, 503 Komodo injoignable)
