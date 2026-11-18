@@ -57,8 +57,17 @@ if [ -f "$REPO_DIR/periphery/periphery.env" ]; then
   updated=1
 fi
 
+if [ -f "$REPO_DIR/mcp/mcp.env" ]; then
+  log "mise à jour du serveur MCP…"
+  docker compose -p komodo-mcp -f "$REPO_DIR/mcp/compose.yaml" \
+    --env-file "$REPO_DIR/mcp/mcp.env" pull
+  docker compose -p komodo-mcp -f "$REPO_DIR/mcp/compose.yaml" \
+    --env-file "$REPO_DIR/mcp/mcp.env" up -d
+  updated=1
+fi
+
 if [ "$updated" != 1 ]; then
-  die "ni core/compose.env ni periphery/periphery.env : rien à mettre à jour sur cette machine"
+  die "aucun fichier d'environnement (core, periphery ou mcp) : rien à mettre à jour sur cette machine"
 fi
 
 if [ "$PRUNE" = 1 ]; then
