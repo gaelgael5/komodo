@@ -39,11 +39,16 @@ Dépôt d'installation et de configuration de [Komodo v2](https://komo.do)
 ├── periphery/
 │   ├── compose.yaml          # Periphery seul, pour les autres hôtes
 │   └── periphery.env.example
+├── mcp/
+│   ├── compose.yaml          # serveur MCP pour les agents IA
+│   ├── mcp.env.example
+│   └── README.md             # modèle de sécurité et procédure complète
 ├── syncs/                    # "Komodo as code" : Resource Syncs en TOML
 ├── secrets/                  # paramètres chiffrés sops+age (*.env.sops commités)
 ├── scripts/
 │   ├── bootstrap-core.sh     # première installation du Core
 │   ├── add-periphery.sh      # enrôler un nouvel hôte
+│   ├── deploy-mcp.sh         # déployer le serveur MCP (agents IA)
 │   ├── update.sh             # pull + redéploiement
 │   └── backup-restore.md     # sauvegarde / restauration de la base
 ├── .sops.yaml                # destinataire age des secrets
@@ -221,37 +226,25 @@ Si les secrets chiffrés sont utilisés, rechiffrer pour que `secrets/core.env.s
 reste le reflet de la réalité (commande dans [`secrets/README.md`](secrets/README.md)),
 puis commiter.
 
-## 7. Préparation pour les agents IA (MCP) — documentation seulement
+## 7. Agents IA (serveur MCP)
 
-L'accès des agents IA passera par l'API Komodo via un serveur MCP tiers
-([`MP-Tool/komodo-mcp-server`](https://github.com/MP-Tool/komodo-mcp-server)).
-Rien n'est installé par ce dépôt ; le jour venu :
+Les agents IA pilotent Komodo via un serveur MCP HTTP déployé par ce dépôt
+([`mcp/`](mcp/README.md), basé sur
+[`MP-Tool/komodo-mcp-server`](https://github.com/MP-Tool/komodo-mcp-server)).
+Trois couches de protection : **permissions du compte Komodo dédié**
+(`svc-agents`, le vrai garde-fou), **surface d'outils réduite** aux niveaux
+`komodo:read` + `komodo:operate` (les outils `komodo:admin`, le terminal
+distant et la gestion des clés d'API sont exclus côté serveur), et
+**confirmation humaine** des actions destructives.
 
-1. **Créer un utilisateur dédié** dans Komodo : `Settings → Users → New User`
-   (type *Service User*), nommé par ex. `svc-agents`. Ne pas lui donner le
-   rôle admin.
-2. **Limiter ses droits** : par défaut un nouvel utilisateur ne voit rien
-   (`KOMODO_TRANSPARENT_MODE=false`). Lui accorder au cas par cas des
-   permissions `Read` / `Execute` sur les seules ressources utiles — de
-   préférence via un *User Group* déclaré dans les syncs, par ex. :
+En résumé (procédure détaillée dans [`mcp/README.md`](mcp/README.md)) :
 
-   ```toml
-   [[user_group]]
-   name = "agents-ia"
-   users = ["svc-agents"]
-   all.Server = "Read"
-   all.Stack = { level = "Execute" }   # Execute = agir, sans modifier la config
-   ```
-
-   Ne pas donner `Write` (modification de config) ni accès aux `Settings`.
-3. **Créer une clé d'API** pour cet utilisateur (profil de l'utilisateur →
-   *API Keys*) : une paire clé/secret dédiée, révocable indépendamment.
-4. **Restreindre le serveur MCP** : lors de sa configuration, n'activer que
-   les niveaux `komodo:read` et `komodo:operate` (lecture et opérations
-   start/stop/deploy), jamais le niveau d'administration/écriture — se
-   référer au README du serveur MCP pour la variable exacte. Les permissions
-   Komodo côté utilisateur restent le garde-fou principal : même un MCP mal
-   configuré ne peut pas dépasser les droits de `svc-agents`.
+1. créer l'utilisateur `svc-agents` dans l'UI et ses permissions minimales
+   via le groupe `agents-ia` ([`syncs/users.toml`](syncs/users.toml)) ;
+2. sur l'hôte du Core : `./dev-deploy.sh mcp` puis `scripts/deploy-mcp.sh` ;
+3. connecter le client, ex. :
+   `claude mcp add --transport http komodo http://<ip>:8000/mcp`
+   puis s'authentifier avec le compte `svc-agents`.
 
 ## Règles du dépôt
 
