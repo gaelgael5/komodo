@@ -57,7 +57,7 @@ Dépôt d'installation et de configuration de [Komodo v2](https://komo.do)
 | --- | --- |
 | Docker + compose v2 | sur chaque hôte (`docker compose version` ≥ 2.24) |
 | CPU avec AVX | **VM du Core uniquement** : MongoDB 5+ l'exige. Sur Proxmox, type de CPU de la VM = `host` |
-| Réseau | les hôtes pilotés doivent joindre le Core sur `9120` (sortant) ; rien d'entrant chez eux |
+| Réseau | les hôtes pilotés doivent joindre le Core sur `9120` (sortant) ; rien d'entrant chez eux. Le port `9120` doit être libre sur la VM du Core (`ss -tlnp | grep 9120`) |
 | `git` | sur chaque hôte (clone du dépôt) |
 | `sops` + `age` | optionnel mais recommandé, pour les secrets chiffrés (voir [`secrets/README.md`](secrets/README.md)) |
 | `pre-commit` | sur la machine où l'on commite : `pipx install pre-commit && pre-commit install` |
@@ -78,6 +78,14 @@ cd komodo
 ```bash
 ./dev-deploy.sh core        # questions : URL publique, TZ, nom du Server, admin…
 ```
+
+Réponses attendues :
+
+- **URL publique (`KOMODO_HOST`)** : URL complète **avec schéma**. Le nom DNS
+  prévu (`https://komodo.example.com`) s'il existe déjà, sinon
+  `http://<ip-du-core>:9120` en attendant (bascule DNS : voir section 6).
+  Le script ajoute `http://` si le schéma est oublié.
+- **Nom du premier Server** : le hostname proposé par défaut convient.
 
 > Les mots de passe (base, admin) et secrets (JWT, webhook) sont générés
 > aléatoirement ; le mot de passe admin est affiché **une seule fois**.
@@ -181,6 +189,21 @@ Procédure complète, y compris reconstruction du Core de zéro :
 - Si les webhooks GitHub doivent arriver depuis Internet, n'exposer
   publiquement que le chemin `/listener` (le reste de l'UI peut rester
   accessible uniquement depuis le LAN/VPN).
+
+**Basculer `KOMODO_HOST` une fois le DNS en place** (si l'installation a été
+faite avec l'IP) :
+
+```bash
+sed -i 's|^KOMODO_HOST=.*|KOMODO_HOST=https://komodo.example.com|' core/compose.env
+```
+
+```bash
+scripts/update.sh --no-pull
+```
+
+Si les secrets chiffrés sont utilisés, rechiffrer pour que `secrets/core.env.sops`
+reste le reflet de la réalité (commande dans [`secrets/README.md`](secrets/README.md)),
+puis commiter.
 
 ## 7. Préparation pour les agents IA (MCP) — documentation seulement
 

@@ -25,8 +25,17 @@ Ce qui est fait :
 > (gestionnaire de mots de passe, coffre…). Sans elle, les `*.env.sops`
 > sont indéchiffrables.
 
-Prérequis : binaires `sops` et `age` installés
-(<https://github.com/getsops/sops/releases>, `apt install age`).
+Prérequis : binaires `sops` et `age` installés. Sur Debian/Ubuntu :
+
+```bash
+apt install -y age
+```
+
+```bash
+curl -sSL -o /usr/local/bin/sops \
+  https://github.com/getsops/sops/releases/download/v3.11.0/sops-v3.11.0.linux.amd64 \
+  && chmod +x /usr/local/bin/sops
+```
 
 ## Utilisation courante
 

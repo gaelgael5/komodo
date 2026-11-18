@@ -184,7 +184,15 @@ cmd_core() {
   fi
 
   local host tz server_name admin_user admin_pass
-  host="${OPT_HOST:-$(ask "URL publique de Komodo (KOMODO_HOST)" "https://komodo.example.com")}"
+  host="${OPT_HOST:-$(ask "URL publique de Komodo, avec http:// ou https:// (KOMODO_HOST)" "https://komodo.example.com")}"
+  # KOMODO_HOST doit être une URL complète : on répare une saisie « ip:port ».
+  case "$host" in
+    http://* | https://*) ;;
+    *)
+      host="http://${host}"
+      warn "KOMODO_HOST sans schéma : corrigé en ${host}"
+      ;;
+  esac
   tz="${OPT_TZ:-$(ask "Fuseau horaire (TZ)" "Europe/Paris")}"
   server_name="${OPT_SERVER_NAME:-$(ask "Nom du premier Server (hostname conseillé)" "$(hostname)")}"
   admin_user="${OPT_ADMIN_USER:-$(ask "Compte admin initial" "admin")}"
@@ -237,6 +245,22 @@ cmd_periphery() {
   local core_address tz onboarding core_pub
   core_address="${OPT_CORE_ADDRESS:-$(ask "Adresse du Core (ws://<ip>:9120 ou wss://<dns>)" "")}"
   [ -n "$core_address" ] || die "adresse du Core requise (ex. ws://192.168.1.10:9120)"
+  # L'adresse doit être une URL websocket : on répare les saisies courantes.
+  case "$core_address" in
+    ws://* | wss://*) ;;
+    http://*)
+      core_address="ws://${core_address#http://}"
+      warn "adresse en http:// : corrigée en ${core_address}"
+      ;;
+    https://*)
+      core_address="wss://${core_address#https://}"
+      warn "adresse en https:// : corrigée en ${core_address}"
+      ;;
+    *)
+      core_address="ws://${core_address}"
+      warn "adresse sans schéma : corrigée en ${core_address}"
+      ;;
+  esac
   tz="${OPT_TZ:-$(ask "Fuseau horaire (TZ)" "Europe/Paris")}"
   onboarding="${OPT_ONBOARDING_KEY:-$(ask "Clé d'enrôlement O-... (vide si le Server existe déjà)" "")}"
   core_pub="${OPT_CORE_PUBLIC_KEY:-$(ask "Clé publique du Core à épingler (vide = trust-on-first-use)" "")}"
