@@ -24,6 +24,7 @@ Usage : ./dev-deploy.sh <commande> [options]
 Commandes :
   core        génère core/compose.env        (paramètres du Core)
   periphery   génère periphery/periphery.env (paramètres d'un Periphery)
+  mcp         génère mcp/mcp.env             (serveur MCP pour agents IA)
   init-sops   génère la clé age et configure .sops.yaml (secrets chiffrés)
 
 Options communes :
@@ -45,6 +46,11 @@ Options « periphery » :
   --name NOM           nom du Server / PERIPHERY_CONNECT_AS (défaut : hostname)
   --onboarding-key K   clé d'enrôlement O-... (vide si le Server existe déjà)
   --core-public-key K  clé publique du Core à épingler (vide = trust-on-first-use)
+
+Options « mcp » :
+  --komodo-url URL     URL du Core vue depuis le conteneur MCP
+                       (défaut : KOMODO_HOST de core/compose.env si présent)
+  --port N             port d'écoute du serveur MCP (défaut : 8000)
 
 Si sops + age sont configurés et qu'un fichier chiffré correspondant existe
 dans secrets/, il est déchiffré au lieu de poser les questions (sauf --regenerate).
@@ -281,6 +287,49 @@ cmd_periphery() {
   maybe_save_secret "$target" "$enc"
 }
 
+cmd_mcp() {
+  local target="$REPO_DIR/mcp/mcp.env"
+  local example="$REPO_DIR/mcp/mcp.env.example"
+  local enc="$REPO_DIR/secrets/mcp.env.sops"
+
+  if [ -f "$target" ] && [ "$FORCE" != 1 ]; then
+    die "mcp/mcp.env existe déjà (relancer avec --force pour l'écraser)"
+  fi
+
+  if [ "$REGENERATE" != 1 ] && [ -f "$enc" ] && sops_ready && can_decrypt; then
+    log "secret chiffré trouvé : restauration depuis secrets/mcp.env.sops"
+    decrypt_to "$enc" "$target"
+    log "mcp/mcp.env restauré (mode 600)."
+    return 0
+  fi
+
+  # Par défaut, proposer le KOMODO_HOST du Core local (cas usuel : même hôte).
+  local default_url=""
+  if [ -f "$REPO_DIR/core/compose.env" ]; then
+    default_url="$(grep -E '^KOMODO_HOST=' "$REPO_DIR/core/compose.env" | tail -1 | cut -d= -f2- || true)"
+  fi
+
+  local komodo_url port
+  komodo_url="${OPT_KOMODO_URL:-$(ask "URL du Core vue depuis le conteneur MCP (KOMODO_URL)" "$default_url")}"
+  [ -n "$komodo_url" ] || die "URL du Core requise (ex. http://192.168.1.10:9120)"
+  case "$komodo_url" in
+    http://* | https://*) ;;
+    *)
+      komodo_url="http://${komodo_url}"
+      warn "URL sans schéma : corrigée en ${komodo_url}"
+      ;;
+  esac
+  port="${OPT_PORT:-$(ask "Port d'écoute du serveur MCP" "8000")}"
+
+  install -m 600 "$example" "$target"
+  set_var "$target" KOMODO_URL "$komodo_url"
+  set_var "$target" KOMODO_MCP_PORT "$port"
+  set_var "$target" TZ "${OPT_TZ:-Europe/Paris}"
+
+  log "mcp/mcp.env généré (mode 600)."
+  maybe_save_secret "$target" "$enc"
+}
+
 cmd_init_sops() {
   command -v age-keygen >/dev/null 2>&1 || die "age-keygen introuvable (Debian/Ubuntu : apt install age)"
   command -v sops >/dev/null 2>&1 || die "sops introuvable : https://github.com/getsops/sops/releases"
@@ -321,6 +370,8 @@ OPT_CORE_ADDRESS=""
 OPT_NAME=""
 OPT_ONBOARDING_KEY=""
 OPT_CORE_PUBLIC_KEY=""
+OPT_KOMODO_URL=""
+OPT_PORT=""
 
 CMD="${1:-}"
 if [ -z "$CMD" ] || [ "$CMD" = "-h" ] || [ "$CMD" = "--help" ]; then
@@ -351,6 +402,8 @@ while [ $# -gt 0 ]; do
     --name) OPT_NAME="$(req "$1" "${2:-}")"; shift ;;
     --onboarding-key) OPT_ONBOARDING_KEY="$(req "$1" "${2:-}")"; shift ;;
     --core-public-key) OPT_CORE_PUBLIC_KEY="$(req "$1" "${2:-}")"; shift ;;
+    --komodo-url) OPT_KOMODO_URL="$(req "$1" "${2:-}")"; shift ;;
+    --port) OPT_PORT="$(req "$1" "${2:-}")"; shift ;;
     -h | --help) usage; exit 0 ;;
     *) die "option inconnue : $1 (voir --help)" ;;
   esac
@@ -360,6 +413,7 @@ done
 case "$CMD" in
   core) cmd_core ;;
   periphery) cmd_periphery ;;
+  mcp) cmd_mcp ;;
   init-sops) cmd_init_sops ;;
   *)
     usage

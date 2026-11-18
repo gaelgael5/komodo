@@ -1,0 +1,23 @@
+# ---------------------------------------------------------------------------
+# Groupes d'utilisateurs ("Komodo as code").
+#
+# Schéma : https://docs.rs/komodo_client/latest/komodo_client/entities/toml/struct.UserGroupToml.html
+# Les utilisateurs eux-mêmes se créent dans l'UI (Settings -> Users) ;
+# seuls les groupes et leurs permissions sont versionnés ici.
+# ---------------------------------------------------------------------------
+
+## Groupe des agents IA (serveur MCP) : lecture globale limitée + action
+## ciblée, jamais de Write ni d'admin. Décommenter après avoir créé
+## l'utilisateur `svc-agents` dans l'UI (voir mcp/README.md).
+# [[user_group]]
+# name = "agents-ia"
+# users = ["svc-agents"]
+# # Lecture seule sur les serveurs (statuts, stats)
+# all.Server = "Read"
+# # Les agents ne voient que les stacks listées ci-dessous :
+# permissions = [
+#   # Execute = agir (deploy/start/stop), sans modifier la configuration
+#   { target.type = "Stack", target.id = "exemple-app", level = "Execute" },
+#   # Regex possible : toutes les stacks préfixées "lab-"
+#   # { target.type = "Stack", target.id = "\\^lab-.*$\\", level = "Execute" },
+# ]
