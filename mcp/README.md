@@ -63,6 +63,21 @@ Puis `/mcp` dans Claude Code → `komodo` → *Authenticate* : une page de
 connexion s'ouvre, s'identifier avec `svc-agents` (ou son propre compte —
 chacun garde ses propres permissions).
 
+### Derrière un reverse proxy / tunnel (exposition Internet)
+
+Si le serveur MCP est publié sous un nom public (reverse proxy, Cloudflare
+Tunnel…), renseigner l'URL publique à la question dédiée de
+`./dev-deploy.sh mcp` (ou `--base-url https://mcp.example.com`) : cela pose
+`MCP_BASE_URL` (indispensable au flux d'authentification) et
+`MCP_TRUST_PROXY=true`. Le client se connecte alors à
+`https://mcp.example.com/mcp`.
+
+> ⚠️ Un endpoint MCP public est une télécommande d'infrastructure sur
+> Internet. L'auth Komodo + le rate limiting intégrés sont le minimum ;
+> ajouter une couche d'accès en amont (ex. Cloudflare Access / Zero Trust
+> sur ce hostname) est fortement recommandé — même recommandation pour
+> l'UI Komodo elle-même si elle est publiée.
+
 ### Autres clients
 
 Claude Desktop, VS Code / GitHub Copilot : exemples prêts à l'emploi dans

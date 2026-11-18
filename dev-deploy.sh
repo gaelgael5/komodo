@@ -51,6 +51,8 @@ Options « mcp » :
   --komodo-url URL     URL du Core vue depuis le conteneur MCP
                        (défaut : KOMODO_HOST de core/compose.env si présent)
   --port N             port d'écoute du serveur MCP (défaut : 8000)
+  --base-url URL       URL publique du serveur MCP derrière un reverse proxy
+                       (ex. https://mcp.example.com ; vide = accès direct)
 
 Si sops + age sont configurés et qu'un fichier chiffré correspondant existe
 dans secrets/, il est déchiffré au lieu de poser les questions (sauf --regenerate).
@@ -321,10 +323,26 @@ cmd_mcp() {
   esac
   port="${OPT_PORT:-$(ask "Port d'écoute du serveur MCP" "8000")}"
 
+  local base_url
+  base_url="${OPT_BASE_URL:-$(ask "URL publique derrière un reverse proxy (vide si accès direct)" "")}"
+  if [ -n "$base_url" ]; then
+    case "$base_url" in
+      http://* | https://*) ;;
+      *)
+        base_url="https://${base_url}"
+        warn "URL sans schéma : corrigée en ${base_url}"
+        ;;
+    esac
+  fi
+
   install -m 600 "$example" "$target"
   set_var "$target" KOMODO_URL "$komodo_url"
   set_var "$target" KOMODO_MCP_PORT "$port"
   set_var "$target" TZ "${OPT_TZ:-Europe/Paris}"
+  if [ -n "$base_url" ]; then
+    set_var "$target" MCP_BASE_URL "$base_url"
+    set_var "$target" MCP_TRUST_PROXY "true"
+  fi
 
   log "mcp/mcp.env généré (mode 600)."
   maybe_save_secret "$target" "$enc"
@@ -372,6 +390,7 @@ OPT_ONBOARDING_KEY=""
 OPT_CORE_PUBLIC_KEY=""
 OPT_KOMODO_URL=""
 OPT_PORT=""
+OPT_BASE_URL=""
 
 CMD="${1:-}"
 if [ -z "$CMD" ] || [ "$CMD" = "-h" ] || [ "$CMD" = "--help" ]; then
@@ -404,6 +423,7 @@ while [ $# -gt 0 ]; do
     --core-public-key) OPT_CORE_PUBLIC_KEY="$(req "$1" "${2:-}")"; shift ;;
     --komodo-url) OPT_KOMODO_URL="$(req "$1" "${2:-}")"; shift ;;
     --port) OPT_PORT="$(req "$1" "${2:-}")"; shift ;;
+    --base-url) OPT_BASE_URL="$(req "$1" "${2:-}")"; shift ;;
     -h | --help) usage; exit 0 ;;
     *) die "option inconnue : $1 (voir --help)" ;;
   esac
